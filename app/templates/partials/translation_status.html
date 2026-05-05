@@ -15,6 +15,11 @@
       {{ rendered | safe }}
     </div>
   </article>
+  <script>
+    if (window.MathJax && window.MathJax.typesetPromise) {
+      window.MathJax.typesetPromise([document.getElementById('trans-status')]);
+    }
+  </script>
 </div>
 {% elif translation and translation.status == 'failed' %}
 <div id="trans-status">

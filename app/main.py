@@ -1,11 +1,36 @@
 from __future__ import annotations
 
 import json
+import re
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
 
 import markdown as md
+
+_INLINE_MATH_RE = re.compile(r"\\\((.+?)\\\)")
+_BLOCK_MATH_RE = re.compile(r"\\\[(.+?)\\\]", re.DOTALL)
+
+
+def _normalize_math_delimiters(text: str) -> str:
+    """Convert ``\\(...\\)`` / ``\\[...\\]`` to ``$...$`` / ``$$...$$``.
+
+    pymdownx.arithmatex (configured with generic=True) only recognizes the
+    dollar-sign syntax in the markdown source. The LLM frequently emits the
+    backslash-paren / backslash-bracket form, which would otherwise pass
+    through as literal text and never get wrapped for MathJax.
+    """
+    text = _BLOCK_MATH_RE.sub(lambda m: f"$${m.group(1)}$$", text)
+    text = _INLINE_MATH_RE.sub(lambda m: f"${m.group(1)}$", text)
+    return text
+
+
+def _render_translation_md(md_text: str) -> str:
+    return md.markdown(
+        _normalize_math_delimiters(md_text),
+        extensions=["fenced_code", "tables", "pymdownx.arithmatex"],
+        extension_configs={"pymdownx.arithmatex": {"generic": True}},
+    )
 from fastapi import FastAPI, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -155,15 +180,7 @@ async def translation_page(request: Request, paper_id: int) -> HTMLResponse:
         md_text = (config.TRANSLATION_DIR / trans["content_path"]).read_text(
             encoding="utf-8"
         )
-        rendered = md.markdown(
-            md_text,
-            extensions=[
-                "fenced_code",
-                "tables",
-                "pymdownx.arithmatex",
-            ],
-            extension_configs={"pymdownx.arithmatex": {"generic": True}},
-        )
+        rendered = _render_translation_md(md_text)
     cfg_obj = config.load()
     return templates.TemplateResponse(
         request,
@@ -243,15 +260,7 @@ async def translation_status(request: Request, paper_id: int) -> HTMLResponse:
         md_text = (config.TRANSLATION_DIR / trans["content_path"]).read_text(
             encoding="utf-8"
         )
-        rendered = md.markdown(
-            md_text,
-            extensions=[
-                "fenced_code",
-                "tables",
-                "pymdownx.arithmatex",
-            ],
-            extension_configs={"pymdownx.arithmatex": {"generic": True}},
-        )
+        rendered = _render_translation_md(md_text)
     return templates.TemplateResponse(
         request,
         "partials/translation_status.html",
