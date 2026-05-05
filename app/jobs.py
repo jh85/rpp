@@ -11,6 +11,7 @@ from typing import Awaitable, Callable
 
 from . import config, db, pdf_utils
 from .translator import build_metadata_provider, build_provider
+from .util import last_name_of
 
 _QUEUE: asyncio.Queue["Job"] | None = None
 _WORKER_TASK: asyncio.Task | None = None
@@ -177,6 +178,7 @@ async def run_metadata(paper_id: int) -> None:
     pub_date = _str_or_none(parsed.get("publication_date"))
     abstract = _str_or_none(parsed.get("abstract")) or ""
 
+    display_default = last_name_of(authors[0]) if authors else ""
     with db.connect() as conn:
         # Only fill in fields if the user hasn't already saved manual edits.
         # WHERE metadata_status = 'pending' makes the update a no-op once the
@@ -185,6 +187,7 @@ async def run_metadata(paper_id: int) -> None:
             """
             UPDATE papers
             SET title = ?, authors_json = ?, first_author = ?,
+                display_authors = ?,
                 publication_date = ?, abstract = ?,
                 metadata_status = 'done', metadata_error = NULL
             WHERE id = ? AND metadata_status = 'pending'
@@ -193,6 +196,7 @@ async def run_metadata(paper_id: int) -> None:
                 title,
                 json.dumps(authors, ensure_ascii=False),
                 authors[0] if authors else None,
+                display_default or None,
                 pub_date,
                 abstract,
                 paper_id,

@@ -8,6 +8,10 @@
       <input type="text" name="authors"
              value="{{ (paper.authors_json | authors_list) | join(', ') }}">
     </label>
+    <label>Authors (list-page label) <small>(shown in the table; e.g. "Kocsis", "Sutton & Barto")</small>
+      <input type="text" name="display_authors"
+             value="{{ paper.display_authors or '' }}">
+    </label>
     <label>Publication date <small>(YYYY-MM-DD, YYYY-MM, or YYYY)</small>
       <input type="text" name="publication_date"
              value="{{ paper.publication_date or '' }}">

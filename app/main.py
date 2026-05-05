@@ -38,6 +38,7 @@ from fastapi.templating import Jinja2Templates
 
 from . import config, db, jobs, pdf_utils
 from .translator import build_provider
+from .util import last_name_of, year_of
 
 cfg = config.load()
 db.init()
@@ -64,21 +65,10 @@ def _truncate(s: str | None, n: int = 80) -> str:
     return s if len(s) <= n else s[: n - 1] + "…"
 
 
-def _last_name(full: str | None) -> str:
-    """Last name of a full author string. Handles 'Given Family' and 'Family, Given'."""
-    if not full:
-        return ""
-    s = str(full).strip()
-    if not s:
-        return ""
-    if "," in s:
-        return s.split(",", 1)[0].strip()
-    return s.split()[-1]
-
-
 templates.env.filters["truncate_text"] = _truncate
 templates.env.filters["authors_list"] = _parse_authors
-templates.env.filters["last_name"] = _last_name
+templates.env.filters["last_name"] = last_name_of
+templates.env.filters["year_of"] = year_of
 
 
 @asynccontextmanager
@@ -328,6 +318,7 @@ async def update_meta(
     paper_id: int,
     title: str = Form(""),
     authors: str = Form(""),
+    display_authors: str = Form(""),
     publication_date: str = Form(""),
     source_url: str = Form(""),
     memo: str = Form(""),
@@ -339,6 +330,7 @@ async def update_meta(
             """
             UPDATE papers
             SET title = ?, authors_json = ?, first_author = ?,
+                display_authors = ?,
                 publication_date = ?, source_url = ?, memo = ?,
                 metadata_status = 'done', metadata_error = NULL
             WHERE id = ?
@@ -347,6 +339,7 @@ async def update_meta(
                 title.strip() or None,
                 json.dumps(parsed_authors, ensure_ascii=False),
                 parsed_authors[0] if parsed_authors else None,
+                display_authors.strip() or None,
                 publication_date.strip() or None,
                 source_url.strip() or None,
                 memo,
