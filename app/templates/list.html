@@ -11,9 +11,8 @@
   <thead>
     <tr>
       <th>Title</th>
-      <th>First Author</th>
+      <th>Authors</th>
       <th>Pub. Date</th>
-      <th>Added</th>
       <th>Memo</th>
       <th>Actions</th>
     </tr>
@@ -36,9 +35,8 @@
           <a href="/papers/{{ p.id }}">{{ p.title or p.pdf_filename }}</a>
         {% endif %}
       </td>
-      <td>{{ p.first_author or "" }}</td>
+      <td>{{ p.first_author | last_name }}</td>
       <td>{{ p.publication_date or "" }}</td>
-      <td><small>{{ p.created_at }}</small></td>
       <td><small>{{ p.memo | truncate_text(60) }}</small></td>
       <td class="actions">
         <a href="/papers/{{ p.id }}/pdf" target="_blank" title="Open PDF">📄</a>

@@ -64,8 +64,21 @@ def _truncate(s: str | None, n: int = 80) -> str:
     return s if len(s) <= n else s[: n - 1] + "…"
 
 
+def _last_name(full: str | None) -> str:
+    """Last name of a full author string. Handles 'Given Family' and 'Family, Given'."""
+    if not full:
+        return ""
+    s = str(full).strip()
+    if not s:
+        return ""
+    if "," in s:
+        return s.split(",", 1)[0].strip()
+    return s.split()[-1]
+
+
 templates.env.filters["truncate_text"] = _truncate
 templates.env.filters["authors_list"] = _parse_authors
+templates.env.filters["last_name"] = _last_name
 
 
 @asynccontextmanager
@@ -285,34 +298,56 @@ async def delete_paper(paper_id: int) -> RedirectResponse:
     return RedirectResponse(url="/", status_code=303)
 
 
-@app.put("/papers/{paper_id}/memo", response_class=HTMLResponse)
-async def update_memo(request: Request, paper_id: int, memo: str = Form("")) -> HTMLResponse:
-    _get_paper(paper_id)
-    with db.connect() as conn:
-        conn.execute("UPDATE papers SET memo = ? WHERE id = ?", (memo, paper_id))
-    safe = (memo or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-    body = (
-        '<div id="memo-block">'
-        f'<blockquote>{safe or "<em>(no memo)</em>"}</blockquote>'
-        '<button hx-get="/papers/' + str(paper_id) + '/memo/edit" '
-        'hx-target="#memo-block" hx-swap="outerHTML">Edit memo</button>'
-        "</div>"
-    )
-    return HTMLResponse(body)
-
-
-@app.get("/papers/{paper_id}/memo/edit", response_class=HTMLResponse)
-async def edit_memo(paper_id: int) -> HTMLResponse:
+@app.get("/papers/{paper_id}/meta", response_class=HTMLResponse)
+async def meta_view(request: Request, paper_id: int) -> HTMLResponse:
     paper = _get_paper(paper_id)
-    memo = (paper["memo"] or "").replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-    body = (
-        '<form id="memo-block" hx-put="/papers/' + str(paper_id) + '/memo" '
-        'hx-target="#memo-block" hx-swap="outerHTML">'
-        f'<textarea name="memo" rows="4" style="width:100%">{memo}</textarea>'
-        '<button type="submit">Save</button>'
-        "</form>"
+    return templates.TemplateResponse(
+        request, "partials/paper_meta_view.html", {"paper": paper}
     )
-    return HTMLResponse(body)
+
+
+@app.get("/papers/{paper_id}/meta/edit", response_class=HTMLResponse)
+async def meta_edit(request: Request, paper_id: int) -> HTMLResponse:
+    paper = _get_paper(paper_id)
+    return templates.TemplateResponse(
+        request, "partials/paper_meta_edit.html", {"paper": paper}
+    )
+
+
+@app.put("/papers/{paper_id}/meta", response_class=HTMLResponse)
+async def update_meta(
+    request: Request,
+    paper_id: int,
+    title: str = Form(""),
+    authors: str = Form(""),
+    publication_date: str = Form(""),
+    source_url: str = Form(""),
+    memo: str = Form(""),
+) -> HTMLResponse:
+    _get_paper(paper_id)
+    parsed_authors = [a.strip() for a in authors.split(",") if a.strip()]
+    with db.connect() as conn:
+        conn.execute(
+            """
+            UPDATE papers
+            SET title = ?, authors_json = ?, first_author = ?,
+                publication_date = ?, source_url = ?, memo = ?
+            WHERE id = ?
+            """,
+            (
+                title.strip() or None,
+                json.dumps(parsed_authors, ensure_ascii=False),
+                parsed_authors[0] if parsed_authors else None,
+                publication_date.strip() or None,
+                source_url.strip() or None,
+                memo,
+                paper_id,
+            ),
+        )
+    paper = _get_paper(paper_id)
+    return templates.TemplateResponse(
+        request, "partials/paper_meta_view.html", {"paper": paper}
+    )
 
 
 # ---------------------------------------------------------------- helpers
