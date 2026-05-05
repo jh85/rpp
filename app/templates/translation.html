@@ -1,0 +1,66 @@
+{% extends "base.html" %}
+{% block head %}
+<script>
+  window.MathJax = {
+    tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] },
+    options: { renderActions: { addMenu: [] } }
+  };
+</script>
+<script id="MathJax-script" async
+        src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+{% endblock %}
+
+{% block content %}
+<p><a href="/papers/{{ paper.id }}">← Back to paper</a></p>
+
+<h1>Japanese translation</h1>
+<p><small>{{ paper.title or paper.pdf_filename }}</small></p>
+
+{% if paper.has_text_layer == 0 %}
+  <article>
+    <p><mark>⚠️ This PDF appears to be scanned (no text layer). Translation is not available in v1.</mark></p>
+  </article>
+
+{% elif not translation %}
+  <article>
+    <form method="post" action="/papers/{{ paper.id }}/translate">
+      <button type="submit">Translate to Japanese</button>
+    </form>
+    <p><small>Will use <strong>{{ translation_provider }}</strong> / <code>{{ translation_model }}</code>.</small></p>
+  </article>
+
+{% elif translation.status in ('pending', 'running') %}
+  <div id="trans-status"
+       hx-get="/papers/{{ paper.id }}/translation/status"
+       hx-trigger="load delay:2s"
+       hx-swap="outerHTML">
+    {% include "partials/translation_status.html" %}
+  </div>
+
+{% elif translation.status == 'failed' %}
+  <article>
+    <p><mark>Translation failed: {{ translation.error_message }}</mark></p>
+    <form method="post" action="/papers/{{ paper.id }}/translate?force=1">
+      <button type="submit">Retry</button>
+    </form>
+  </article>
+
+{% else %}
+  <article>
+    <header>
+      <small>
+        Translated by <strong>{{ translation.provider }}</strong>
+        / <code>{{ translation.model }}</code>
+        on {{ translation.completed_at }}
+      </small>
+      <form method="post" action="/papers/{{ paper.id }}/translate?force=1" style="display:inline; float:right">
+        <button type="submit" class="secondary">Re-translate</button>
+      </form>
+    </header>
+    <div class="translation-body">
+      {{ rendered | safe }}
+    </div>
+  </article>
+{% endif %}
+
+{% endblock %}

@@ -1,0 +1,38 @@
+{% if translation and translation.status == 'done' %}
+<div id="trans-status">
+  <article>
+    <header>
+      <small>
+        Translated by <strong>{{ translation.provider }}</strong>
+        / <code>{{ translation.model }}</code>
+        on {{ translation.completed_at }}
+      </small>
+      <form method="post" action="/papers/{{ paper.id }}/translate?force=1" style="display:inline; float:right">
+        <button type="submit" class="secondary">Re-translate</button>
+      </form>
+    </header>
+    <div class="translation-body">
+      {{ rendered | safe }}
+    </div>
+  </article>
+</div>
+{% elif translation and translation.status == 'failed' %}
+<div id="trans-status">
+  <article>
+    <p><mark>Translation failed: {{ translation.error_message }}</mark></p>
+    <form method="post" action="/papers/{{ paper.id }}/translate?force=1">
+      <button type="submit">Retry</button>
+    </form>
+  </article>
+</div>
+{% else %}
+<div id="trans-status"
+     hx-get="/papers/{{ paper.id }}/translation/status"
+     hx-trigger="load delay:2s"
+     hx-swap="outerHTML">
+  <article aria-busy="true">
+    <p>Translating… {{ (translation.progress if translation else 0) or 0 }}%</p>
+    <progress value="{{ (translation.progress if translation else 0) or 0 }}" max="100"></progress>
+  </article>
+</div>
+{% endif %}

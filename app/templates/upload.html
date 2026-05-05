@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Upload paper</h1>
+
+<form method="post" action="/papers" enctype="multipart/form-data">
+  <label>
+    PDF file
+    <input type="file" name="pdf" accept="application/pdf" required>
+  </label>
+
+  <label>
+    Source URL
+    <input type="url" name="source_url" placeholder="https://arxiv.org/abs/..." required>
+  </label>
+
+  <label>
+    Memo (optional)
+    <textarea name="memo" rows="4"
+      placeholder="e.g. I want to use this paper's idea to solve 6×6 Othello"></textarea>
+  </label>
+
+  <button type="submit">Upload</button>
+  <a href="/" role="button" class="secondary">Cancel</a>
+</form>
+{% endblock %}

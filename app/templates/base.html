@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>{{ title or "rpp" }}</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@picocss/pico@2/css/pico.classless.min.css">
+    <link rel="stylesheet" href="/static/style.css">
+    <script src="/static/htmx.min.js" defer></script>
+    {% block head %}{% endblock %}
+</head>
+<body>
+<header class="container">
+    <nav>
+        <ul><li><strong><a href="/">rpp</a></strong> <small>research paper manager</small></li></ul>
+        <ul><li><a href="/papers/new" role="button">+ Upload paper</a></li></ul>
+    </nav>
+</header>
+<main class="container">
+    {% block content %}{% endblock %}
+</main>
+</body>
+</html>

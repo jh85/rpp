@@ -1,0 +1,56 @@
+:root {
+  --rpp-accent: #3b82f6;
+}
+
+table .actions {
+  white-space: nowrap;
+  font-size: 1.1rem;
+}
+
+table .actions a, table .actions button.link {
+  text-decoration: none;
+  margin-right: .35rem;
+}
+
+button.link {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  color: inherit;
+  font: inherit;
+}
+
+.spinner {
+  display: inline-block;
+  width: .75rem;
+  height: .75rem;
+  border: 2px solid #ccc;
+  border-top-color: var(--rpp-accent);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+  vertical-align: middle;
+  margin-right: .25rem;
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+.badge {
+  display: inline-block;
+  padding: .15rem .5rem;
+  border-radius: .35rem;
+  background: #eee;
+  font-size: .85rem;
+}
+.badge.done   { background: #d1fae5; color: #065f46; }
+.badge.running{ background: #fef3c7; color: #92400e; }
+.badge.failed { background: #fee2e2; color: #991b1b; }
+
+section.meta p { margin: .25rem 0; }
+
+.actions-row { display: flex; gap: .5rem; flex-wrap: wrap; align-items: center; margin: 1rem 0; }
+
+.translation-body { line-height: 1.7; }
+.translation-body h1, .translation-body h2, .translation-body h3 { margin-top: 1.5rem; }
+.translation-body pre { background: #f6f8fa; padding: .75rem; overflow-x: auto; }
+.translation-body code { background: #f6f8fa; padding: .1rem .25rem; border-radius: 3px; }

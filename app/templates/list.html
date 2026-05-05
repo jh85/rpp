@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Papers</h1>
+
+{% if not papers %}
+<article>
+  <p>No papers yet. <a href="/papers/new">Upload your first one →</a></p>
+</article>
+{% else %}
+<table>
+  <thead>
+    <tr>
+      <th>Title</th>
+      <th>First Author</th>
+      <th>Pub. Date</th>
+      <th>Added</th>
+      <th>Memo</th>
+      <th>Actions</th>
+    </tr>
+  </thead>
+  <tbody>
+    {% for p in papers %}
+    <tr>
+      <td>
+        {% if p.metadata_status == 'pending' %}
+          <span class="spinner" title="Extracting metadata…"></span>
+          <em>{{ p.pdf_filename }}</em>
+        {% elif p.metadata_status == 'failed' %}
+          {% if p.has_text_layer == 0 %}
+            <span title="Scanned PDF — translation not available">⚠️</span>
+          {% else %}
+            <span title="Metadata extraction failed: {{ p.metadata_error or '' }}">⚠️</span>
+          {% endif %}
+          <a href="/papers/{{ p.id }}">{{ p.title or p.pdf_filename }}</a>
+        {% else %}
+          <a href="/papers/{{ p.id }}">{{ p.title or p.pdf_filename }}</a>
+        {% endif %}
+      </td>
+      <td>{{ p.first_author or "" }}</td>
+      <td>{{ p.publication_date or "" }}</td>
+      <td><small>{{ p.created_at }}</small></td>
+      <td><small>{{ p.memo | truncate_text(60) }}</small></td>
+      <td class="actions">
+        <a href="/papers/{{ p.id }}/pdf" target="_blank" title="Open PDF">📄</a>
+        {% if p.has_text_layer == 1 %}
+          <a href="/papers/{{ p.id }}/translation" title="Japanese translation">🇯🇵</a>
+        {% else %}
+          <span title="Scanned PDF — translation not available" style="opacity:.4">🇯🇵</span>
+        {% endif %}
+        <form method="post" action="/papers/{{ p.id }}/delete" style="display:inline"
+              onsubmit="return confirm('Delete this paper?');">
+          <button type="submit" class="link" title="Delete">🗑</button>
+        </form>
+      </td>
+    </tr>
+    {% endfor %}
+  </tbody>
+</table>
+{% endif %}
+{% endblock %}

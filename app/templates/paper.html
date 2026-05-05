@@ -1,0 +1,81 @@
+{% extends "base.html" %}
+{% block content %}
+<p><a href="/">← All papers</a></p>
+
+{% if paper.metadata_status == 'pending' %}
+  <h1><em>(extracting metadata…)</em></h1>
+  <p><small>{{ paper.pdf_filename }}</small></p>
+{% else %}
+  <h1>{{ paper.title or paper.pdf_filename }}</h1>
+{% endif %}
+
+<section class="meta">
+  {% set authors = paper.authors_json | authors_list %}
+  {% if authors %}
+    <p><strong>Authors:</strong> {{ authors | join(', ') }}</p>
+  {% endif %}
+  {% if paper.publication_date %}
+    <p><strong>Publication date:</strong> {{ paper.publication_date }}</p>
+  {% endif %}
+  {% if paper.source_url %}
+    <p><strong>Source:</strong> <a href="{{ paper.source_url }}" target="_blank" rel="noopener">{{ paper.source_url }}</a></p>
+  {% endif %}
+  <p><strong>Added:</strong> <small>{{ paper.created_at }}</small></p>
+  <p><strong>File:</strong> <small>{{ paper.pdf_filename }} — {{ paper.page_count or '?' }} pages</small></p>
+  {% if paper.has_text_layer == 0 %}
+    <p><mark>⚠️ Scanned PDF — no text layer; translation is not available.</mark></p>
+  {% endif %}
+  {% if paper.metadata_status == 'failed' %}
+    <p><mark>Metadata extraction failed: {{ paper.metadata_error }}</mark></p>
+  {% endif %}
+</section>
+
+<section>
+  <h3>Memo</h3>
+  <div id="memo-block">
+    <blockquote>{{ paper.memo or "<em>(no memo)</em>" | safe }}</blockquote>
+    <button hx-get="/papers/{{ paper.id }}/memo/edit"
+            hx-target="#memo-block" hx-swap="outerHTML">Edit memo</button>
+  </div>
+</section>
+
+<section>
+  <h3>Translation</h3>
+  <p>
+    {% if not translation %}
+      <span class="badge">Not translated</span>
+    {% elif translation.status == 'done' %}
+      <span class="badge done">Translated ✓</span>
+    {% elif translation.status == 'failed' %}
+      <span class="badge failed">Failed</span>
+    {% else %}
+      <span class="badge running">Translating… {{ translation.progress or 0 }}%</span>
+    {% endif %}
+  </p>
+</section>
+
+{% if paper.abstract %}
+<section>
+  <h3>Abstract</h3>
+  <p>{{ paper.abstract }}</p>
+</section>
+{% endif %}
+
+<nav class="actions-row">
+  <a href="/papers/{{ paper.id }}/pdf" target="_blank" role="button">View PDF</a>
+  {% if paper.has_text_layer == 1 %}
+    <a href="/papers/{{ paper.id }}/translation" role="button">View Japanese translation</a>
+  {% endif %}
+  <form method="post" action="/papers/{{ paper.id }}/delete" style="display:inline"
+        onsubmit="return confirm('Delete this paper?');">
+    <button type="submit" class="secondary">Delete</button>
+  </form>
+</nav>
+
+<section>
+  <h3>PDF</h3>
+  <embed src="/papers/{{ paper.id }}/pdf#toolbar=1" type="application/pdf"
+         style="width:100%; height:80vh; border:1px solid #ccc">
+</section>
+
+{% endblock %}
