@@ -44,6 +44,22 @@ async def start_worker() -> None:
     _QUEUE = asyncio.Queue()
     _WORKER_TASK = asyncio.create_task(_worker_loop(), name="rpp-worker")
     _log("worker_started")
+    await _recover_orphaned_jobs()
+
+
+async def _recover_orphaned_jobs() -> None:
+    """Re-enqueue translations left as pending/running by a previous server crash.
+
+    Without this, a process restart silently strands them: the in-memory queue
+    is empty, but the DB row keeps the polling UI showing "Translating… 0%"."""
+    with db.connect() as conn:
+        rows = conn.execute(
+            "SELECT paper_id FROM translations WHERE status IN ('pending', 'running')"
+        ).fetchall()
+    for row in rows:
+        paper_id = row[0]
+        _log("recover_translation", paper_id=paper_id)
+        await get_queue().put(Job(kind="translate", paper_id=paper_id))
 
 
 async def stop_worker() -> None:
@@ -75,6 +91,13 @@ async def _worker_loop() -> None:
         except Exception as exc:
             _log("worker_job_failed", kind=job.kind, paper_id=job.paper_id, err=repr(exc))
             traceback.print_exc(file=sys.stderr)
+            try:
+                if job.kind == "translate":
+                    _set_translation_failed(job.paper_id, f"Worker crashed: {exc!r}")
+                elif job.kind == "metadata":
+                    _set_metadata_failed(job.paper_id, f"Worker crashed: {exc!r}")
+            except Exception as inner:
+                _log("worker_cleanup_failed", err=repr(inner))
         finally:
             queue.task_done()
 
