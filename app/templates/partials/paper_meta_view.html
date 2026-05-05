@@ -29,6 +29,8 @@
     {% endif %}
   </section>
 
-  <button hx-get="/papers/{{ paper.id }}/meta/edit"
-          hx-target="#meta-block" hx-swap="outerHTML">Edit metadata</button>
+  {% if paper.metadata_status != 'pending' %}
+    <button hx-get="/papers/{{ paper.id }}/meta/edit"
+            hx-target="#meta-block" hx-swap="outerHTML">Edit metadata</button>
+  {% endif %}
 </div>

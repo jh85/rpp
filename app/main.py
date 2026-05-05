@@ -298,6 +298,14 @@ async def delete_paper(paper_id: int) -> RedirectResponse:
     return RedirectResponse(url="/", status_code=303)
 
 
+@app.get("/papers/{paper_id}/header", response_class=HTMLResponse)
+async def header_partial(request: Request, paper_id: int) -> HTMLResponse:
+    paper = _get_paper(paper_id)
+    return templates.TemplateResponse(
+        request, "partials/paper_header.html", {"paper": paper}
+    )
+
+
 @app.get("/papers/{paper_id}/meta", response_class=HTMLResponse)
 async def meta_view(request: Request, paper_id: int) -> HTMLResponse:
     paper = _get_paper(paper_id)
@@ -331,7 +339,8 @@ async def update_meta(
             """
             UPDATE papers
             SET title = ?, authors_json = ?, first_author = ?,
-                publication_date = ?, source_url = ?, memo = ?
+                publication_date = ?, source_url = ?, memo = ?,
+                metadata_status = 'done', metadata_error = NULL
             WHERE id = ?
             """,
             (

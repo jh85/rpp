@@ -1,0 +1,21 @@
+<div id="paper-header"
+     {% if paper.metadata_status == 'pending' %}
+       hx-get="/papers/{{ paper.id }}/header"
+       hx-trigger="load delay:2s"
+       hx-swap="outerHTML"
+     {% endif %}>
+
+  {% if paper.metadata_status == 'pending' %}
+    <h1><span class="spinner"></span> <em>(extracting metadata…)</em></h1>
+    <p><small>{{ paper.pdf_filename }}</small></p>
+  {% else %}
+    <h1>{{ paper.title or paper.pdf_filename }}</h1>
+    {% if paper.metadata_status == 'done' %}
+      <p><small>✓ Metadata extracted. You can still edit it below.</small></p>
+    {% elif paper.metadata_status == 'failed' %}
+      <p><mark>⚠️ Metadata extraction failed{% if paper.metadata_error %}: {{ paper.metadata_error }}{% endif %}. Edit the fields below manually.</mark></p>
+    {% endif %}
+  {% endif %}
+
+  {% include "partials/paper_meta_view.html" %}
+</div>

@@ -2,14 +2,7 @@
 {% block content %}
 <p><a href="/">← All papers</a></p>
 
-{% if paper.metadata_status == 'pending' %}
-  <h1><em>(extracting metadata…)</em></h1>
-  <p><small>{{ paper.pdf_filename }}</small></p>
-{% else %}
-  <h1>{{ paper.title or paper.pdf_filename }}</h1>
-{% endif %}
-
-{% include "partials/paper_meta_view.html" %}
+{% include "partials/paper_header.html" %}
 
 <section>
   <h3>Translation</h3>

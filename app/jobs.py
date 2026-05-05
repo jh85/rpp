@@ -154,7 +154,7 @@ async def run_metadata(paper_id: int) -> None:
             sys_prompt += "\n\nIMPORTANT: respond with ONLY a valid JSON object. No code fences, no commentary."
         try:
             raw = await asyncio.wait_for(
-                provider.complete_json(sys_prompt, snippet), timeout=70.0
+                provider.complete_json(sys_prompt, snippet), timeout=30.0
             )
         except Exception as exc:
             last_error = f"LLM call failed: {exc}"
@@ -178,13 +178,16 @@ async def run_metadata(paper_id: int) -> None:
     abstract = _str_or_none(parsed.get("abstract")) or ""
 
     with db.connect() as conn:
+        # Only fill in fields if the user hasn't already saved manual edits.
+        # WHERE metadata_status = 'pending' makes the update a no-op once the
+        # detail-page form has set it to 'done', avoiding a clobber race.
         conn.execute(
             """
             UPDATE papers
             SET title = ?, authors_json = ?, first_author = ?,
                 publication_date = ?, abstract = ?,
                 metadata_status = 'done', metadata_error = NULL
-            WHERE id = ?
+            WHERE id = ? AND metadata_status = 'pending'
             """,
             (
                 title,
