@@ -278,32 +278,50 @@ async def run_translation(paper_id: int, *, force: bool = False) -> None:
             (paper_id,),
         )
 
-    chunks = chunk_text(text, max_chars=cfg.translation_chunk_chars)
-    total = len(chunks)
-    _log("translate_chunked", paper_id=paper_id, chunks=total)
+    # Pseudocode/algorithm blocks are passed through verbatim (not translated):
+    # translating them tends to garble math, and the user does not want them
+    # translated. Each remaining prose segment is chunked independently.
+    segments = _segment_for_translation(text)
+    units: list[tuple[str, str]] = []
+    for kind, content in segments:
+        if kind == "code":
+            units.append(("code", content))
+            continue
+        for piece in chunk_text(content, max_chars=cfg.translation_chunk_chars):
+            units.append(("prose", piece))
+
+    total = sum(1 for kind, _ in units if kind == "prose")
+    code_blocks = sum(1 for kind, _ in units if kind == "code")
+    _log("translate_chunked", paper_id=paper_id, chunks=total, code_blocks=code_blocks)
 
     provider = build_provider()
     pieces: list[str] = []
     last_tail = ""
+    done = 0
 
-    for i, chunk in enumerate(chunks):
+    for kind, content in units:
+        if kind == "code":
+            pieces.append(content)
+            continue
         try:
-            translated = await _translate_with_retry(provider, chunk, last_tail)
+            translated = await _translate_with_retry(provider, content, last_tail)
         except Exception as exc:
+            detail = str(exc).strip() or type(exc).__name__
             _set_translation_failed(
                 paper_id,
-                f"Chunk {i+1}/{total} failed: {exc}",
+                f"Chunk {done + 1}/{total} failed: {detail}",
             )
             return
         pieces.append(translated)
         last_tail = translated[-300:]
-        progress = int(round((i + 1) / total * 100))
+        done += 1
+        progress = int(round(done / total * 100)) if total else 100
         with db.connect() as conn:
             conn.execute(
                 "UPDATE translations SET progress = ? WHERE paper_id = ? AND language = 'ja'",
                 (progress, paper_id),
             )
-        _log("translate_chunk_done", paper_id=paper_id, chunk=i + 1, total=total)
+        _log("translate_chunk_done", paper_id=paper_id, chunk=done, total=total)
 
     output = "\n\n".join(pieces).strip() + "\n"
     out_path = config.TRANSLATION_DIR / f"{paper_id}.ja.md"
@@ -353,6 +371,60 @@ def _set_translation_failed(paper_id: int, error: str) -> None:
             """,
             (error, paper_id),
         )
+
+
+# ------------------------------------------------------- pseudocode skipping
+
+_ALGO_HEADER = re.compile(r"^Algorithm \d+\b")
+_ALGO_OUTPUT = re.compile(r"^\d+:\s*Output\b")
+_ALGO_STEP = re.compile(r"^\d+:")
+
+
+def _segment_for_translation(text: str) -> list[tuple[str, str]]:
+    """Split text into ordered ('prose'|'code', content) segments.
+
+    'code' segments are algorithm/pseudocode blocks that should be passed
+    through verbatim rather than translated. A block starts at an
+    ``Algorithm N ...`` header and runs through its numbered steps until the
+    ``Output:`` step (inclusive). Falls back to the last numbered step within a
+    bounded window, or a page break, so a misdetected block never swallows a
+    large run of prose.
+    """
+    lines = text.split("\n")
+    n = len(lines)
+    segments: list[tuple[str, str]] = []
+    buf: list[str] = []
+    i = 0
+    while i < n:
+        if _ALGO_HEADER.match(lines[i].strip()):
+            if buf:
+                segments.append(("prose", "\n".join(buf)))
+                buf = []
+            start = i
+            end: int | None = None
+            for j in range(i + 1, n):
+                s = lines[j].strip()
+                if _ALGO_OUTPUT.match(s):
+                    end = j
+                    break
+                if s.startswith("--- page"):
+                    end = j - 1
+                    break
+            if end is None:
+                # No explicit terminator: stop at the last numbered step seen
+                # within a bounded window so we don't absorb following prose.
+                end = start
+                for k in range(start + 1, min(start + 60, n)):
+                    if _ALGO_STEP.match(lines[k].strip()):
+                        end = k
+            segments.append(("code", "\n".join(lines[start : end + 1])))
+            i = end + 1
+        else:
+            buf.append(lines[i])
+            i += 1
+    if buf:
+        segments.append(("prose", "\n".join(buf)))
+    return segments
 
 
 # ---------------------------------------------------------------- chunking
