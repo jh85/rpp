@@ -85,7 +85,7 @@ def load() -> Config:
         zhipuai_api_key=os.getenv("ZHIPUAI_API_KEY", "").strip(),
         glm_model=glm_model,
         metadata_model=metadata_model,
-        translation_chunk_chars=int(os.getenv("TRANSLATION_CHUNK_CHARS", "12000")),
+        translation_chunk_chars=int(os.getenv("TRANSLATION_CHUNK_CHARS", "6000")),
     )
 
     for provider in {cfg.translation_provider, cfg.metadata_provider}:
