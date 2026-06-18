@@ -5,6 +5,7 @@ import re
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import quote
 
 import markdown as md
 
@@ -31,6 +32,15 @@ def _render_translation_md(md_text: str) -> str:
         extensions=["fenced_code", "tables", "pymdownx.arithmatex"],
         extension_configs={"pymdownx.arithmatex": {"generic": True}},
     )
+
+
+def _inline_content_disposition(filename: str) -> str:
+    ascii_filename = filename.encode("ascii", "ignore").decode("ascii") or "paper.pdf"
+    ascii_filename = ascii_filename.replace("\\", "_").replace("\"", "_")
+    utf8_filename = quote(filename, safe="")
+    return f"inline; filename=\"{ascii_filename}\"; filename*=utf-8''{utf8_filename}"
+
+
 from fastapi import FastAPI, Form, HTTPException, Request, UploadFile
 from fastapi.responses import FileResponse, HTMLResponse, RedirectResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -170,7 +180,9 @@ async def paper_pdf(paper_id: int) -> FileResponse:
         path,
         media_type="application/pdf",
         filename=paper["pdf_filename"],
-        headers={"Content-Disposition": f'inline; filename="{paper["pdf_filename"]}"'},
+        headers={
+            "Content-Disposition": _inline_content_disposition(paper["pdf_filename"])
+        },
     )
 
 
