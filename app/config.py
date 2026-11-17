@@ -68,7 +68,7 @@ def load() -> Config:
     if metadata_provider not in VALID_PROVIDERS:
         _die(f"METADATA_PROVIDER must be one of {VALID_PROVIDERS}, got {metadata_provider!r}")
 
-    anthropic_model = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-4-6").strip()
+    anthropic_model = os.getenv("ANTHROPIC_MODEL", "claude-sonnet-5-5").strip()
     openai_model = os.getenv("OPENAI_MODEL", "gpt-4.1").strip()
     glm_model = os.getenv("GLM_MODEL", "glm-4-plus").strip()
     metadata_model = os.getenv("METADATA_MODEL", "").strip()

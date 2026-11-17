@@ -37,7 +37,19 @@ class AnthropicProvider(TranslationProvider):
             max_tokens=max_tokens,
             system=system,
             messages=[{"role": "user", "content": user}],
+            # Translation/extraction need little reasoning; low effort keeps
+            # thinking tokens from eating into max_tokens and speeds things up.
+            output_config={"effort": "low"},
         )
+        if msg.stop_reason == "refusal":
+            details = getattr(msg, "stop_details", None)
+            raise RuntimeError(
+                f"Model refused the request (category={getattr(details, 'category', None)})"
+            )
+        if msg.stop_reason == "max_tokens":
+            raise RuntimeError(
+                f"Output truncated at max_tokens={max_tokens}; chunk is incomplete"
+            )
         parts: list[str] = []
         for block in msg.content:
             text = getattr(block, "text", None)
